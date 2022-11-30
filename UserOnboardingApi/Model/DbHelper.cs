@@ -4,6 +4,7 @@ using System.Net.Mail;
 using System.Text;
 using UserOnboardingApi.EFCore;
 
+
 namespace UserOnboardingApi.Model
 {
     public class DbHelper
@@ -111,13 +112,15 @@ namespace UserOnboardingApi.Model
 
 
         }
-        //post
+        //post or add user
         public void AddUser(userModel usermodel)
         {
             User dbTable = new User();
             {
                 // check if user Email exists before adding and auto-increment the id
+                //var emailExists = await _context.FindByEmailAsync(usermodel.Email);
                 var EmailList = _context.Users.Select(dbTable => dbTable.Email).ToList();
+                
                 if (EmailList.Contains(usermodel.Email))
                 {
                     throw new Exception("email already exists");
@@ -135,6 +138,7 @@ namespace UserOnboardingApi.Model
                         dbTable.Name = usermodel.Name;
                         dbTable.Email = usermodel.Email;
                         dbTable.Password = usermodel.Password;
+                        dbTable.Status = "InActive";
                         _context.Users.Add(dbTable);
                         _context.SaveChanges();
                     }
@@ -146,7 +150,7 @@ namespace UserOnboardingApi.Model
 
 
 
-        //put
+        //put or update user details
         public void SaveUser(userModel userModel)
         {
             User dbTable = new User();
@@ -160,6 +164,22 @@ namespace UserOnboardingApi.Model
                 _context.Users.Update(dbTable);
                 _context.SaveChanges();
             }
+        }
+
+        //change password
+        public void ChangePass(userModel userModel)
+        {
+            User dbTable = new User();
+            dbTable = _context.Users.Where(d => d.Email == userModel.Email).FirstOrDefault();
+            if (dbTable != null)
+            {
+                userModel.Password = EncodePasswordToBase64(userModel.Password);
+                dbTable.Password = userModel.Password;
+                dbTable.Status = "Active";
+                _context.Users.Update(dbTable);
+                _context.SaveChanges();
+            }
+            
         }
 
         //Delete

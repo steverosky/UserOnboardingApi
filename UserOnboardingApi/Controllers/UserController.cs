@@ -1,5 +1,6 @@
 ﻿
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using UserOnboardingApi.EFCore;
 using UserOnboardingApi.Model;
 using static UserOnboardingApi.Model.DbHelper;
@@ -107,8 +108,26 @@ namespace UserOnboardingApi.Controllers
                 return BadRequest(ResponseHandler.GetExceptionResponse(ex));
             }
         }
+        
+        // PUT api/<UserController>/6
+        [HttpPut]
+        [Route("api/[controller]/ChangePass")]
+        public IActionResult Change([FromBody] userModel email)
+        {
+            try
+            {
+                ResponseType type = ResponseType.Success;
+                _db.ChangePass(email);
+                return Ok(ResponseHandler.GetAppResponse(type, email));
+            }
+            catch (Exception ex)
+            {
 
-       
+                return BadRequest(ResponseHandler.GetExceptionResponse(ex));
+            }
+        }
+
+
         // DELETE api/<UserController>/5
         [HttpDelete]
         [Route("api/[controller]/DeleteUser/{id}")]
