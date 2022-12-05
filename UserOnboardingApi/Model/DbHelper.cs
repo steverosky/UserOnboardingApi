@@ -1,4 +1,5 @@
 ﻿//using MailKit.Net.Smtp;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Mail;
 using System.Text;
@@ -14,6 +15,27 @@ namespace UserOnboardingApi.Model
         {
             _context = context;
         }
+
+        // Authenticate  user details email & password for login
+        public async Task<User> GetUser(string email, string password)
+        {
+            var user = await _context.Set<User>().FirstOrDefaultAsync(e => e.Email == email);
+            if (user is not null && DecodeFrom64(user.Password) == password)
+            {
+                return user;
+            }
+            return null;
+        }
+
+        //public async Task<User> GetUser(string email, string password)
+        //{
+        //    Func<User, bool> isValidUser = (User user) => {
+        //        return user.Email == email &&
+        //           DecodeFrom64(user.Password) == password;
+        //    };
+        //    return  _context.Set<User>().ToList().Where(e => isValidUser(e)).FirstOrDefault();
+        //}
+
 
 
 
@@ -120,7 +142,7 @@ namespace UserOnboardingApi.Model
                 // check if user Email exists before adding and auto-increment the id
                 //var emailExists = await _context.FindByEmailAsync(usermodel.Email);
                 var EmailList = _context.Users.Select(dbTable => dbTable.Email).ToList();
-                
+
                 if (EmailList.Contains(usermodel.Email))
                 {
                     throw new Exception("email already exists");
@@ -170,16 +192,28 @@ namespace UserOnboardingApi.Model
         public void ChangePass(userModel userModel)
         {
             User dbTable = new User();
-            dbTable = _context.Users.Where(d => d.Email == userModel.Email).FirstOrDefault();
-            if (dbTable != null)
+
+            var EmailList = _context.Users.Select(dbTable => dbTable.Email).ToList();
+
+            if (EmailList.Contains(userModel.Email))
             {
-                userModel.Password = EncodePasswordToBase64(userModel.Password);
-                dbTable.Password = userModel.Password;
-                dbTable.Status = "Active";
-                _context.Users.Update(dbTable);
-                _context.SaveChanges();
+                dbTable = _context.Users.Where(d => d.Email == userModel.Email).FirstOrDefault();
+                if (dbTable != null)
+                {
+
+                    userModel.Password = EncodePasswordToBase64(userModel.Password);
+                    dbTable.Password = userModel.Password;
+                    dbTable.Status = "Active";
+                    _context.Users.Update(dbTable);
+                    _context.SaveChanges();
+
+                }
             }
-            
+            else
+            {
+                throw new Exception("Email Does not exists");
+            }
+
         }
 
         //Delete

@@ -1,21 +1,52 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using UserOnboardingApi.Controllers;
 using UserOnboardingApi.EFCore;
-
+using UserOnboardingApi.Model;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
-
+//add postgres database services to program
 builder.Services.AddDbContext<EF_DataContext>(
     options => options.UseNpgsql(builder.Configuration.GetConnectionString("Ef_Postgres_DB")));
 
-//var emailConfig = builder.Configuration
-//        .GetSection("EmailConfiguration")
-//        .Get<EmailConfiguration>();
-//builder.Services.AddSingleton(emailConfig);
+//add jwt authentication services to program
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(jwt =>
+{
+    var key = Encoding.ASCII.GetBytes(builder.Configuration["JwtConfig:Secret"]);
+    jwt.SaveToken = true;
+    jwt.RequireHttpsMetadata = false;
+    jwt.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["JwtConfig:Audience"],
+        ValidIssuer = builder.Configuration["JwtConfig:Issuer"],
+        ValidateLifetime = true,
+        RequireExpirationTime = false
+    };
 
-//builder.Services.AddScoped<EMailService.IEmailSender, UserOnboardingApi.Model.DbHelper.EmailSender>();
+});
+
+builder.Services.AddScoped<DbHelper, DbHelper>();
+//builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+//        .AddEntityFrameworkStores<EF_DataContext>();
+
+//add authorization services
+builder.Services.AddAuthorization();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -35,6 +66,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
