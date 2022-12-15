@@ -33,6 +33,10 @@
                     response.Code = "1";
                     response.Message = "Error";
                     break;
+                case ResponseType.Unauthorized:
+                    response.Code = "1";
+                    response.Message = "Unauthorized";
+                    break;
                 default:
                     break;
             }

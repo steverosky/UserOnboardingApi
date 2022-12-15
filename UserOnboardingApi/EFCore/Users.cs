@@ -14,6 +14,10 @@ namespace UserOnboardingApi.EFCore
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public string Status { get; set; } = "InActive";
+        public string Role { get; set; } 
+
+
+
 
 
     }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UserOnboardingApi.EFCore;
@@ -11,9 +12,11 @@ using UserOnboardingApi.EFCore;
 namespace UserOnboardingApi.Migrations
 {
     [DbContext(typeof(EF_DataContext))]
-    partial class EFDataContextModelSnapshot : ModelSnapshot
+    [Migration("20221207154659_2nddatabase")]
+    partial class _2nddatabase
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -238,11 +241,11 @@ namespace UserOnboardingApi.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Role")
+                    b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Status")
+                    b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("text");
 

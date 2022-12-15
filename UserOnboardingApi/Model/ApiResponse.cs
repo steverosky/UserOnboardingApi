@@ -11,6 +11,7 @@
         Success,
         NotFound,
         Error,
-        Failure
+        Failure,
+        Unauthorized
     }
 }

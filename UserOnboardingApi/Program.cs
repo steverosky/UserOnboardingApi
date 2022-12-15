@@ -11,6 +11,11 @@ using UserOnboardingApi.Model;
 var builder = WebApplication.CreateBuilder(args);
 
 
+// For Identity
+builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+    .AddEntityFrameworkStores<EF_DataContext>()
+    .AddDefaultTokenProviders();
+
 //add postgres database services to program
 builder.Services.AddDbContext<EF_DataContext>(
     options => options.UseNpgsql(builder.Configuration.GetConnectionString("Ef_Postgres_DB")));
@@ -36,10 +41,15 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = builder.Configuration["JwtConfig:Audience"],
         ValidIssuer = builder.Configuration["JwtConfig:Issuer"],
         ValidateLifetime = true,
-        RequireExpirationTime = false
+
     };
 
 });
+
+builder.Services.AddCors(options => 
+    options.AddPolicy("AllowAll", p => p.AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader()));
 
 builder.Services.AddScoped<DbHelper, DbHelper>();
 //builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
@@ -67,6 +77,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
+app.UseCors("AllowAll");
 app.UseAuthorization();
 
 app.MapControllers();
