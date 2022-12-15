@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UserOnboardingApi.EFCore;
@@ -11,9 +12,11 @@ using UserOnboardingApi.EFCore;
 namespace UserOnboardingApi.Migrations
 {
     [DbContext(typeof(EF_DataContext))]
-    partial class EFDataContextModelSnapshot : ModelSnapshot
+    [Migration("20221207181736_3rddatabase")]
+    partial class _3rddatabase
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -235,10 +238,6 @@ namespace UserOnboardingApi.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Password")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("text");
 

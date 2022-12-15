@@ -1,29 +1,42 @@
 ﻿//using MailKit.Net.Smtp;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Mail;
+using System.Security.Claims;
 using System.Text;
 using UserOnboardingApi.EFCore;
 
 
 namespace UserOnboardingApi.Model
 {
-    public class DbHelper
+    public class DbHelper : ControllerBase
     {
         private EF_DataContext _context;
-        public DbHelper(EF_DataContext context)
+        private IConfiguration _configuration;
+        private readonly SignInManager<IdentityUser> _signInManager;
+        public DbHelper(EF_DataContext context, IConfiguration config, SignInManager<IdentityUser> signInManager)
         {
             _context = context;
+            _configuration = config;
+            _signInManager = signInManager;
         }
 
         // Authenticate  user details email & password for login
-        public async Task<User> GetUser(string email, string password)
+        public async Task<User> GetUser(string Email, string Password)
         {
-            var user = await _context.Set<User>().FirstOrDefaultAsync(e => e.Email == email);
-            if (user is not null && DecodeFrom64(user.Password) == password)
+            var user = await _context.Set<User>().FirstOrDefaultAsync(e => e.Email == Email);
+            var decoded = DecodeFrom64(user.Password);
+            if (user is not null && decoded == Password)
             {
+                //return new userModel() {
+                //    Token = CreateTokenAsync().ToString()
                 return user;
             }
+
             return null;
         }
 
@@ -109,7 +122,9 @@ namespace UserOnboardingApi.Model
                 Id = row.Id,
                 Name = row.Name,
                 Email = row.Email,
-                Password = DecodeFrom64(row.Password)
+                Password = DecodeFrom64(row.Password),
+                Role = row.Role
+
             }));
 
             return response;
@@ -126,14 +141,40 @@ namespace UserOnboardingApi.Model
                     Id = row.Id,
                     Name = row.Name,
                     Email = row.Email,
-                    Password = DecodeFrom64(row.Password)
+                    Password = DecodeFrom64(row.Password),
+                    Role = row.Role
 
                 };
             else return null;
 
-
-
         }
+
+
+        public void AssignRoles(userModel userModel)
+        {
+            User response = new User();
+            var EmailList = _context.Users.Select(dbTable => dbTable.Email).ToList();
+
+            if (EmailList.Contains(userModel.Email))
+            {
+                var dbTable = _context.Users.Where(d => d.Email == userModel.Email).FirstOrDefault();
+                if (dbTable != null)
+                {
+                    if (userModel.Role == "admin" || userModel.Role == "user")
+                    {
+                        dbTable.Role = userModel.Role;
+                        _context.Users.Update(dbTable);
+                        _context.SaveChanges();
+                    }
+                    else
+                    {
+                        throw new Exception("Invalid Role");
+                    }
+                }
+            }
+        }
+
+
         //post or add user
         public void AddUser(userModel usermodel)
         {
@@ -161,14 +202,66 @@ namespace UserOnboardingApi.Model
                         dbTable.Email = usermodel.Email;
                         dbTable.Password = usermodel.Password;
                         dbTable.Status = "InActive";
+                        dbTable.Role = "user";
                         _context.Users.Add(dbTable);
                         _context.SaveChanges();
                     }
+
+                    //send email to user
                     var msg = $"Welcome to User Onboarding,  Hello  {usermodel.Name}, Your account has been created successfully.\nYour password is: {Password}\n Please change your password after login.";
                     sendMail(msg, usermodel.Email);
                 }
             }
         }
+
+        //login a user
+        //public async Task<userModel> Login(userModel model)
+        //{
+        //    User dbTable = new User();
+        //    // Validate the model
+        //    if (!ModelState.IsValid)
+        //    {
+        //        return null;
+        //    }
+
+        //    // Attempt to sign in the user
+
+        //    var user = await _context.Users.FirstOrDefaultAsync(e => e.Email == model.Email);
+        //    if (user is not null && DecodeFrom64(user.Password) == model.Password)
+        //    // If the user was signed in successfully, generate a JWT
+        //    {
+        //        //generate token for new user
+        //        return new userModel()
+        //        {
+        //            Id = dbTable.Id,
+        //            Name = dbTable.Name,
+        //            Email = dbTable.Email,
+        //            Password = DecodeFrom64(dbTable.Password),
+        //            Token = CreateTokenAsync(model).ToString()
+
+        //        };
+
+        //    }
+
+        //    else
+        //    {
+        //        throw new Exception("Invalid login attempt.");
+        //    }
+
+        //// Check if the user is already signed in
+        //if (User.Identity.IsAuthenticated)
+        //{
+        //    return Ok(new { message = "User is already signed in" });
+        //}
+
+        //var user = await _context.Users.FirstOrDefaultAsync(e => e.Email == usermodel.Email);
+        //if (user is not null && DecodeFrom64(user.Password) == usermodel.Password)
+        //{
+        //    var token = CreateTokenAsync(usermodel);
+        //    return await token;
+
+
+
 
 
 
@@ -296,7 +389,84 @@ namespace UserOnboardingApi.Model
 
         }
 
+        public async Task<object> CreateTokenAsync(string email, string password)
+        {
+            var token1 = "";
+            double expireTime = 0;
+            if (email != null && password != null)
+            {
+                var user = await GetUser(email, password);
+
+                if (user != null)
+                {
+                    //create claims details based on the user information
+                    var claims = new[] {
+                        new Claim(JwtRegisteredClaimNames.Sub, _configuration["JwtConfig:Subject"]),
+                        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                        new Claim(JwtRegisteredClaimNames.Iat, DateTime.UtcNow.ToString()),
+                        new Claim("Id", user.Id.ToString()),
+                        new Claim("Email", user.Email.ToString()),
+                        new Claim("Password", user.Password.ToString()),
+                        new Claim("Role", user.Role.ToString()),
+
+
+                        };
+
+                    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtConfig:Secret"]));
+                    var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+                    var token = new JwtSecurityToken(
+                        _configuration["JwtConfig:Issuer"],
+                        _configuration["JwtConfig:Audience"],
+                        claims,
+                        expires: DateTime.UtcNow.AddMinutes(15),
+                        signingCredentials: signIn);
+
+
+                    token1 = new JwtSecurityTokenHandler().WriteToken(token);
+                    expireTime = token.ValidTo.Subtract(DateTime.UtcNow).TotalSeconds;
+                    double expiryTimeInSeconds = Math.Ceiling(expireTime);
+
+
+                    return new userModel()
+                    {
+                        Email = email,
+                        ExpiryTime = expiryTimeInSeconds,
+                        Token = token1
+
+                    };
+                }
+                else
+                {
+                    throw new Exception("Invalid credentials");
+                }
+
+            }
+            else
+            {
+                throw new Exception("Invalid credentials");
+            }
+
+
+        }
+
+        //public string DecodeJWT(string token)
+        //{
+        //    var handler = new JwtSecurityTokenHandler();
+        //    var jsonToken = handler.ReadToken(token);
+        //    var tokenS = handler.ReadToken(token) as JwtSecurityToken;
+        //    var email = tokenS.Claims.First(claim => claim.Type == "Email").Value;
+        //    var password = tokenS.Claims.First(claim => claim.Type == "Password").Value;
+        //    var id = tokenS.Claims.First(claim => claim.Type == "Id").Value;
+        //    var role = tokenS.Claims.First(claim => claim.Type == "Role").Value;
+        //    var expiryTime = tokenS.ValidTo.Subtract(DateTime.UtcNow).TotalSeconds;
+        //    double expiryTimeInSeconds = Math.Ceiling(expiryTime);
+
+        //    return email + " " + password + " " + id + " " + role + " " + expiryTimeInSeconds;
+        //}
+
     }
+
+
 
 }
 

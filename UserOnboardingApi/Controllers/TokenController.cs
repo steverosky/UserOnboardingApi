@@ -25,7 +25,7 @@ namespace UserOnboardingApi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post(userModel _userData)
+        public async Task<IActionResult> CreateToken(userModel _userData)
         {
             if (_userData != null && _userData.Email != null && _userData.Password != null)
             {
@@ -38,7 +38,7 @@ namespace UserOnboardingApi.Controllers
                         new Claim(JwtRegisteredClaimNames.Sub, _configuration["JwtConfig:Subject"]),
                         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                         new Claim(JwtRegisteredClaimNames.Iat, DateTime.UtcNow.ToString()),
-                        //new Claim("Id", user.Id.ToString()),
+                        new Claim("Id", user.Id.ToString()),
                         new Claim("Email", user.Email.ToString()),
                         new Claim("Password", user.Password.ToString()),
                         };
