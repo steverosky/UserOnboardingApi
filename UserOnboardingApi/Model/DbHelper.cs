@@ -1,5 +1,4 @@
-﻿//using MailKit.Net.Smtp;
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -183,7 +182,7 @@ namespace UserOnboardingApi.Model
                 // check if user Email exists before adding and auto-increment the id
                 //var emailExists = await _context.FindByEmailAsync(usermodel.Email);
                 var EmailList = _context.Users.Select(dbTable => dbTable.Email).ToList();
-
+               
                 if (EmailList.Contains(usermodel.Email))
                 {
                     throw new Exception("email already exists");
@@ -205,64 +204,21 @@ namespace UserOnboardingApi.Model
                         dbTable.Role = "user";
                         _context.Users.Add(dbTable);
                         _context.SaveChanges();
-                    }
 
-                    //send email to user
-                    var msg = $"Welcome to User Onboarding,  Hello  {usermodel.Name}, Your account has been created successfully.\nYour password is: {Password}\n Please change your password after login.";
-                    sendMail(msg, usermodel.Email);
+
+                        //read html file from current directory and pass it to the email body
+                        string FilePath = Directory.GetCurrentDirectory() + "\\index2.html";
+                        StreamReader str = new StreamReader(FilePath);
+                        string MailText = str.ReadToEnd();
+                        str.Close();
+                        MailText = MailText.Replace("[username]", usermodel.Name).Replace("[email]", usermodel.Email).Replace("[Password]", Password).Replace("[logo]", "cid:image1");
+
+                        //send mail
+                        sendMail(MailText, usermodel.Email);
+                    }
                 }
             }
         }
-
-        //login a user
-        //public async Task<userModel> Login(userModel model)
-        //{
-        //    User dbTable = new User();
-        //    // Validate the model
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return null;
-        //    }
-
-        //    // Attempt to sign in the user
-
-        //    var user = await _context.Users.FirstOrDefaultAsync(e => e.Email == model.Email);
-        //    if (user is not null && DecodeFrom64(user.Password) == model.Password)
-        //    // If the user was signed in successfully, generate a JWT
-        //    {
-        //        //generate token for new user
-        //        return new userModel()
-        //        {
-        //            Id = dbTable.Id,
-        //            Name = dbTable.Name,
-        //            Email = dbTable.Email,
-        //            Password = DecodeFrom64(dbTable.Password),
-        //            Token = CreateTokenAsync(model).ToString()
-
-        //        };
-
-        //    }
-
-        //    else
-        //    {
-        //        throw new Exception("Invalid login attempt.");
-        //    }
-
-        //// Check if the user is already signed in
-        //if (User.Identity.IsAuthenticated)
-        //{
-        //    return Ok(new { message = "User is already signed in" });
-        //}
-
-        //var user = await _context.Users.FirstOrDefaultAsync(e => e.Email == usermodel.Email);
-        //if (user is not null && DecodeFrom64(user.Password) == usermodel.Password)
-        //{
-        //    var token = CreateTokenAsync(usermodel);
-        //    return await token;
-
-
-
-
 
 
         //put or update user details
@@ -285,28 +241,23 @@ namespace UserOnboardingApi.Model
         public void ChangePass(userModel userModel)
         {
             User dbTable = new User();
-
             var EmailList = _context.Users.Select(dbTable => dbTable.Email).ToList();
-
             if (EmailList.Contains(userModel.Email))
             {
                 dbTable = _context.Users.Where(d => d.Email == userModel.Email).FirstOrDefault();
                 if (dbTable != null)
                 {
-
                     userModel.Password = EncodePasswordToBase64(userModel.Password);
                     dbTable.Password = userModel.Password;
                     dbTable.Status = "Active";
                     _context.Users.Update(dbTable);
                     _context.SaveChanges();
-
                 }
             }
             else
             {
                 throw new Exception("Email Does not exists");
             }
-
         }
 
         //Delete
@@ -318,10 +269,7 @@ namespace UserOnboardingApi.Model
                 _context.Users.Remove(user);
                 _context.SaveChanges();
             }
-
         }
-
-
         public void sendMail(string msg, string recipientEmail)
         {
             try
@@ -329,9 +277,8 @@ namespace UserOnboardingApi.Model
                 var fromAddress = new MailAddress("donotreplyme1234@gmail.com");
                 var toAddress = new MailAddress(recipientEmail);
                 string fromPassword = "okcnmpqkrwkjuexg";
-                string subject = "Cyberteq I'm Testing Something";
+                string subject = "Registered for Heaven";
                 string body = msg;
-
                 var smtp = new SmtpClient
                 {
                     Host = "smtp.gmail.com",
@@ -346,12 +293,21 @@ namespace UserOnboardingApi.Model
                 using (var message = new MailMessage(fromAddress, toAddress)
                 {
                     Subject = subject,
-                    Body = body
+                    Body = body,
+                    IsBodyHtml = true
+
                 })
+
                 {
                     try
                     {
-                        //System.Net.ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12;
+                        // Open the image file and attach it to the email
+                        var imagePath = "transparent.png";
+                        var image = new Attachment(imagePath);
+                        message.Attachments.Add(image);
+
+                        // Set the Content-ID of the image
+                        image.ContentId = "image1";
 
                         smtp.Send(message);
                     }
@@ -418,7 +374,7 @@ namespace UserOnboardingApi.Model
                         _configuration["JwtConfig:Issuer"],
                         _configuration["JwtConfig:Audience"],
                         claims,
-                        expires: DateTime.UtcNow.AddMinutes(15),
+                        expires: DateTime.UtcNow.AddMinutes(120),
                         signingCredentials: signIn);
 
 
